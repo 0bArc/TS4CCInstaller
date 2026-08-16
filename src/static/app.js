@@ -398,7 +398,7 @@ const Onboard = {
     },
     {
       title: "Downloads folder",
-      text: "Pick any folder inside your Sims 4 Mods directory. Packages unpack there.",
+      text: "Pick any folder inside your Sims 4 Mods directory. Clothing, objects, and other .package CC go there. Lots, rooms, and Sims go to the Tray folder automatically.",
       extra: "folder",
     },
     {
@@ -465,7 +465,7 @@ const Onboard = {
           <li>Pick a category and search if you need to.</li>
           <li>Click a card for details, or Add to queue several and Download all from the basket.</li>
           <li>Downloads start a session automatically when needed.</li>
-          <li>Files unpack into the Mods folder you chose.</li>
+          <li>Packages and scripts unpack into your Mods folder. Lots, rooms, and Sims go to Tray.</li>
         </ul>
       `;
     } else {
@@ -538,25 +538,89 @@ const Basket = {
   items: {},
   selected: new Set(),
   downloading: false,
+  _saveTimer: null,
 
   init() {
-    this.load();
     this.bind();
-    this.renderBadge();
+    this.load().then(() => {
+      this.renderBadge();
+      this.render();
+    });
+    window.addEventListener("pagehide", () => this.flushSave());
+    window.addEventListener("beforeunload", () => this.flushSave());
   },
 
-  load() {
+  async load() {
+    // Prefer AppData-backed basket (survives pywebview private storage).
+    try {
+      const data = await api("/api/basket");
+      if (data.items && typeof data.items === "object") {
+        this.items = data.items;
+        try {
+          localStorage.setItem(this.KEY, JSON.stringify(this.items));
+        } catch {
+          /* ignore */
+        }
+        return;
+      }
+    } catch {
+      /* fall through */
+    }
     try {
       const raw = localStorage.getItem(this.KEY);
       this.items = raw ? JSON.parse(raw) || {} : {};
+      if (this.count()) this.persistRemote();
     } catch {
       this.items = {};
     }
   },
 
   save() {
-    localStorage.setItem(this.KEY, JSON.stringify(this.items));
+    try {
+      localStorage.setItem(this.KEY, JSON.stringify(this.items));
+    } catch {
+      /* ignore quota */
+    }
     this.renderBadge();
+    clearTimeout(this._saveTimer);
+    this._saveTimer = setTimeout(() => this.persistRemote(), 200);
+  },
+
+  flushSave() {
+    clearTimeout(this._saveTimer);
+    this._saveTimer = null;
+    try {
+      localStorage.setItem(this.KEY, JSON.stringify(this.items));
+    } catch {
+      /* ignore */
+    }
+    const body = JSON.stringify({ items: this.items });
+    try {
+      if (navigator.sendBeacon) {
+        const blob = new Blob([body], { type: "application/json" });
+        navigator.sendBeacon("/api/basket", blob);
+      } else {
+        fetch("/api/basket", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body,
+          keepalive: true,
+        });
+      }
+    } catch {
+      this.persistRemote();
+    }
+  },
+
+  async persistRemote() {
+    try {
+      await api("/api/basket", {
+        method: "PUT",
+        body: JSON.stringify({ items: this.items }),
+      });
+    } catch {
+      /* offline / shutting down */
+    }
   },
 
   count() {
@@ -1343,7 +1407,7 @@ const LibraryPage = {
 
   async uninstall(item, cardEl) {
     const ok = window.confirm(
-      `Uninstall "${item.title}"?\nThis deletes tracked package files from your Mods folder.`
+      `Uninstall "${item.title}"?\nThis deletes tracked files from Mods and/or Tray.`
     );
     if (!ok) return;
     const btn = cardEl.querySelector(".uninstall-btn");
@@ -1524,7 +1588,7 @@ const ItemPage = {
   async uninstall() {
     const name = this.item?.title || `Item ${this.itemId}`;
     const ok = window.confirm(
-      `Uninstall "${name}"?\nThis deletes tracked package files from your Mods folder.`
+      `Uninstall "${name}"?\nThis deletes tracked files from Mods and/or Tray.`
     );
     if (!ok) return;
     try {

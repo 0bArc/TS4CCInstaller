@@ -27,6 +27,7 @@ from TSRUrl import TSRUrl
 from sims_install import ensure_resource_cfg, install_into_library
 import library_store
 import creators_store
+import basket_store
 from cache_store import get_json as cache_get_json
 from TSRCatalog import (
     CATEGORIES,
@@ -747,6 +748,22 @@ def library_page():
     return render_template("library.html")
 
 
+@app.get("/api/basket")
+def api_basket_get():
+    return jsonify({"ok": True, "items": basket_store.load_basket()})
+
+
+@app.put("/api/basket")
+@app.post("/api/basket")
+def api_basket_put():
+    data = request.get_json(silent=True) or {}
+    items = data.get("items")
+    if not isinstance(items, dict):
+        return jsonify({"ok": False, "error": "items object required"}), 400
+    saved = basket_store.save_basket(items)
+    return jsonify({"ok": True, "items": saved, "count": len(saved)})
+
+
 @app.get("/api/library")
 def api_library_list():
     return jsonify({"ok": True, "items": library_store.list_installed()})
@@ -889,6 +906,11 @@ def api_download(item_id: int):
                     session_id = refreshed
                 file_name = downloader.download(path)
                 files = install_into_library(path, file_name)
+                if not files:
+                    raise RuntimeError(
+                        f"Download finished but nothing was installed from {file_name}. "
+                        "Lots/rooms/Sims need Tray files; clothing/objects need .package files."
+                    )
                 meta = _library_meta_for(url.itemId)
                 library_store.record_install(
                     item_id=url.itemId,
@@ -1071,7 +1093,11 @@ def _main_impl(host: str = "127.0.0.1", port: int = 8765):
         pass
 
     icon_path = Path(BUNDLE_DIR) / "static" / "STCM.ico"
-    start_kwargs = {}
+    start_kwargs = {
+        # Persist localStorage across launches (default private_mode wipes it).
+        "private_mode": False,
+        "storage_path": str(Path(CURRENT_DIR) / "webview"),
+    }
     if icon_path.is_file():
         start_kwargs["icon"] = str(icon_path)
     webview.start(**start_kwargs)

@@ -8,7 +8,7 @@
 
 I made this because downloading from The Sims Resource is a pain: 15 second waits, one file at a time, and VIP ads everywhere.
 
-The default app is a desktop window (Flask + pywebview). It browses free Sims 4 content, skips VIP / early access, and installs packages into your Mods folder. First run asks where to install. The old clipboard CLI is still there with `--cli`.
+The default app is a desktop window (Flask + pywebview). It browses free Sims 4 content, skips VIP / early access, and installs into the right game folders: `.package` / scripts into Mods, lots / rooms / Sims into Tray. First run asks where to put Mods content. The old clipboard CLI is still there with `--cli`.
 However, for a better experience, I recommend using the app.
 
 ## Preview
@@ -45,11 +45,11 @@ On most PCs that is:
 
 If you already used an older build, data may still live in `%APPDATA%\TSRCommunityModManager` (that folder is reused automatically).
 
-Files there include `config.json`, session, library, cache, and logs. Package installs still go to the Mods folder you choose in setup - not AppData.
+Files there include `config.json`, session, library, cache, and logs. Game installs still go to your Sims 4 Mods folder (and Tray for lots/rooms/Sims) - not AppData.
 
 | Option | Description | type |
 | - | - | - |
-| downloadDirectory | Folder where packages are installed (any folder under Sims 4 Mods). | string |
+| downloadDirectory | Mods folder (or subfolder) for `.package` / `.ts4script`. Tray files always go to `Documents/.../The Sims 4/Tray`. | string |
 | maxActiveDownloads | Max concurrent downloads. | integer |
 | saveDownloadQueue | Save and reload the download queue. | boolean |
 | debug | Extra logger output. | boolean |
@@ -84,7 +84,7 @@ python src/main.py --cli
 - Browse by category and search
 - Free items only
 - Item detail page with image gallery
-- Download + unpack into your chosen Mods folder
+- Download + unpack into Mods (CC) and Tray (lots / rooms / Sims)
 - Installed content list with uninstall
 - Download basket (add items, then Download all)
 - Session / captcha for downloads
