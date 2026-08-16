@@ -6,9 +6,9 @@
 ![Manager Icon](src/static/STCM-6.png)
 
 
-I made this because downloading from The Sims Resource is a pain: 15 second waits, one file at a time, and VIP ads everywhere.
+I made this because downloading from The Sims Resource is a pain: 15 second waits, one file at a time, and ads everywhere.
 
-The default app is a desktop window (Flask + pywebview). It browses free Sims 4 content, skips VIP / early access, and installs into the right game folders: `.package` / scripts into Mods, lots / rooms / Sims into Tray. First run asks where to put Mods content. The old clipboard CLI is still there with `--cli`.
+The default app is a desktop window (Flask + pywebview). It browses Sims 4 content and installs into the right game folders: `.package` / scripts into Mods, lots / rooms / Sims into Tray. First run asks where to put Mods content. The old clipboard CLI is still there with `--cli`.
 However, for a better experience, I recommend using the app.
 
 ## Preview
@@ -82,7 +82,6 @@ python src/main.py --cli
 ## App features
 
 - Browse by category and search
-- Free items only
 - Item detail page with image gallery
 - Download + unpack into Mods (CC) and Tray (lots / rooms / Sims)
 - Installed content list with uninstall

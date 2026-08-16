@@ -195,7 +195,7 @@ def build_browse_url(
     category_path: str,
     query: str = "",
     page: int = 1,
-    free_only: bool = True,
+    free_only: bool = False,
 ) -> str:
     path = category_path.rstrip("/")
     q = query.strip()
@@ -270,9 +270,6 @@ def fetch_category(url: str, session: requests.Session) -> BrowsePage:
         except (AttributeError, ValueError):
             continue
 
-        if _block_is_vip(block):
-            continue
-
         title_m = re.search(r'browse-info-title-info">(.*?)</div>', block, re.S)
         if not title_m:
             continue
@@ -308,11 +305,12 @@ def fetch_category(url: str, session: requests.Session) -> BrowsePage:
                 url=f"{BASE_URL}/downloads/{item_id}",
                 downloads=downloads,
                 published=published,
+                is_vip=_block_is_vip(block),
                 artist_slug=artist_slug,
             )
         )
 
-    logger.debug(f"Found {len(items)} free items")
+    logger.debug(f"Found {len(items)} items")
     return BrowsePage(
         items=items,
         total_creations=total,
@@ -330,9 +328,6 @@ def fetch_item_details(item_id: int, session: requests.Session) -> TSRItemDetail
     resp = http_client.get(url, sess=session)
     resp.raise_for_status()
     text = resp.text
-
-    if "VIP Exclusive" in text:
-        raise RuntimeError("This item is VIP Exclusive and was filtered out.")
 
     images = [
         _abs_url(src)

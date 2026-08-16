@@ -237,7 +237,7 @@ def api_browse():
         page = 1
 
     label = next((lab for lab, path in CATEGORIES if path == category), "Sims 4")
-    url = build_browse_url(category, query, page, free_only=True)
+    url = build_browse_url(category, query, page, free_only=False)
     cache_key = url
 
     cached = cache_store.get_json("browse", cache_key)
@@ -413,7 +413,7 @@ def api_item_suggestions(item_id: int):
         path = _category_path_for_label(category_hint)
         label = next((lab for lab, p in CATEGORIES if p == path), "Clothing")
         link = f"/?category={path}"
-        url = build_browse_url(path, "", 1, free_only=True)
+        url = build_browse_url(path, "", 1, free_only=False)
         try:
             result = fetch_category(url, _http())
         except Exception as e:

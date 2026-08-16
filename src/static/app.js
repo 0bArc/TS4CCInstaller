@@ -393,7 +393,7 @@ const Onboard = {
   steps: [
     {
       title: "CC Installer - TSR Community Manager",
-      text: "Browse free Sims 4 CC, open item pages, and download without the VIP ads.",
+      text: "Browse Sims 4 CC, open item pages, and download without the usual wait screens.",
       extra: "",
     },
     {
