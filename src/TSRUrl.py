@@ -1,7 +1,10 @@
 from __future__ import annotations
+
+import re
+
+import http_client
 from exceptions import InvalidURL
 from logger import logger
-import re, requests
 
 
 class TSRUrl:
@@ -35,7 +38,8 @@ class TSRUrl:
         return isUrlValid
 
     def isVipExclusive(self) -> bool:
-        r = requests.get(self.url)
+        r = http_client.get(self.url)
+        r.raise_for_status()
         return "VIP Exclusive" in r.text
 
     @staticmethod
@@ -45,7 +49,8 @@ class TSRUrl:
             return TSRUrl(f"https://www.thesimsresource.com{href}")
 
         logger.debug(f"Getting required items for {url.url}")
-        r = requests.get(f"https://www.thesimsresource.com/downloads/{url.itemId}")
+        r = http_client.get(f"https://www.thesimsresource.com/downloads/{url.itemId}")
+        r.raise_for_status()
         return list(
             map(
                 convertHrefToTSRUrl,

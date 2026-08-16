@@ -1,8 +1,22 @@
 from __future__ import annotations
-import requests, time, os, re
+
+import os
+import random
+import re
+import time
+
+import http_client
 from TSRUrl import TSRUrl
 from logger import logger
 from exceptions import *
+
+BASE = http_client.BASE
+# Calm pacing: wait before first poll, then ~1-1.5s with jitter.
+POLL_START_S = 7.0
+POLL_INTERVAL_S = 1.2
+POLL_JITTER_S = 0.4
+POLL_TIMEOUT_S = 30.0
+CHUNK = 1024 * 256
 
 
 def stripForbiddenCharacters(string: str) -> str:
@@ -10,101 +24,156 @@ def stripForbiddenCharacters(string: str) -> str:
 
 
 class TSRDownload:
-    @classmethod
+    """TSR free download flow:
+
+    1. ajax initDownload -> ticket (+ ticket path)
+    2. GET ticket page (required; binds ticket / refreshes tsrdlsession)
+    3. poll getdownloadurl until CDN URL is ready
+    4. stream file (Range resume supported)
+    """
+
     def __init__(self, url: TSRUrl, sessionId: str):
         self.TSRDLTicket = ""
         self.url: TSRUrl = url
         self.sessionId = sessionId
         self.ticketInitializedTime = -1.0
-        self.session: requests.Session = requests.Session()
+        self.session = http_client.new_session()
+        self.session.headers.update(
+            {
+                "Accept": "*/*",
+                "Origin": BASE,
+                "Referer": f"{BASE}/downloads/details/id/{url.itemId}/",
+            }
+        )
 
-    @classmethod
     def init(self):
         logger.info(f"Initializing TSRDownload for: {self.url.url}")
-        self.TSRDLTicket = self.__getTSRDLTicket()
-        self.session.cookies.set(
-            "tsrdlsession",
-            self.sessionId or self.__getTSRDLTicketCookie()
-        )
-        self.ticketInitializedTime = time.time() * 1000
+        self._set_session_cookie(self.sessionId)
+        ticket, ticket_path = self.__getTSRDLTicket()
+        self.TSRDLTicket = ticket
+        self.__visitTicketPage(ticket_path)
+        self.ticketInitializedTime = time.time()
 
-    @classmethod
+    def current_session_id(self) -> str:
+        return self.session.cookies.get("tsrdlsession") or self.sessionId or ""
+
     def download(self, downloadPath: str) -> str:
         logger.info(f"Starting download for: {self.url.url}")
-        timeToSleep = 15000 - (time.time() * 1000 - self.ticketInitializedTime)
-        if timeToSleep > 0:
-            time.sleep(timeToSleep / 1000)
-
         downloadUrl = self.__getDownloadUrl()
         logger.debug(f"Got downloadUrl: {downloadUrl}")
-        fileName = stripForbiddenCharacters(self.__getFileName(downloadUrl))
-        logger.debug(f"Got fileName: {fileName}")
 
-        startingBytes = (
-            os.path.getsize(f"{downloadPath}/{fileName}.part")
-            if os.path.exists(f"{downloadPath}/{fileName}.part")
-            else 0
-        )
+        part_path = os.path.join(downloadPath, f"tsr-{self.url.itemId}.part")
+        startingBytes = os.path.getsize(part_path) if os.path.exists(part_path) else 0
         logger.debug(f"Got startingBytes: {startingBytes}")
-        request = self.session.get(
+
+        request = http_client.get(
             downloadUrl,
+            sess=self.session,
             stream=True,
             headers={"Range": f"bytes={startingBytes}-"},
+            timeout=(10, 120),
+            retries=2,
         )
+        request.raise_for_status()
         logger.debug(f"Request status is: {request.status_code}")
-        file = open(f"{downloadPath}/{fileName}.part", "wb")
 
-        for index, chunk in enumerate(request.iter_content(1024 * 128)):
-            logger.debug(f"Downloading chunk #{index} of {downloadUrl}")
-            file.write(chunk)
-        file.close()
-        logger.debug(f"Removing .part from file name: {fileName}")
-        if os.path.exists(f"{downloadPath}/{fileName}"):
-            logger.debug(f"{downloadPath}/{fileName} Already exists! Replacing file")
-            os.replace(f"{downloadPath}/{fileName}.part", f"{downloadPath}/{fileName}")
+        fileName = stripForbiddenCharacters(self.__fileNameFromResponse(request))
+        final_path = os.path.join(downloadPath, fileName)
+        named_part = os.path.join(downloadPath, f"{fileName}.part")
+        if part_path != named_part and os.path.exists(part_path):
+            if os.path.exists(named_part):
+                os.replace(part_path, named_part)
+            else:
+                os.rename(part_path, named_part)
+            part_path = named_part
+        elif part_path != named_part:
+            part_path = named_part
+
+        mode = "ab" if startingBytes and request.status_code == 206 else "wb"
+        if mode == "wb" and os.path.exists(part_path):
+            startingBytes = 0
+
+        with open(part_path, mode) as file:
+            for chunk in request.iter_content(CHUNK):
+                if chunk:
+                    file.write(chunk)
+
+        if os.path.exists(final_path):
+            os.replace(part_path, final_path)
         else:
-            logger.debug(f"{downloadPath}/{fileName} doesn't exist! Renaming file")
-            os.rename(
-                f"{downloadPath}/{fileName}.part",
-                f"{downloadPath}/{fileName}",
-            )
+            os.rename(part_path, final_path)
         return fileName
 
-    @classmethod
-    def __getFileName(self, downloadUrl: str) -> str:
-        return re.search(
-            r'(?<=filename=").+(?=")',
-            requests.get(downloadUrl, stream=True).headers["Content-Disposition"],
-        )[0]
+    def _set_session_cookie(self, session_id: str) -> None:
+        if not session_id:
+            return
+        self.session.cookies.set(
+            "tsrdlsession",
+            session_id,
+            domain=".thesimsresource.com",
+            path="/",
+        )
 
-    @classmethod
+    def __fileNameFromResponse(self, response) -> str:
+        disposition = response.headers.get("Content-Disposition", "")
+        match = re.search(r'filename="(.+)"', disposition)
+        if match:
+            return match.group(1)
+        return f"tsr-{self.url.itemId}.zip"
+
     def __getDownloadUrl(self) -> str:
-        response = self.session.get(
-            f"https://www.thesimsresource.com/ajax.php?c=downloads&a=getdownloadurl&ajax=1&itemid={self.url.itemId}&mid=0&lk=0&ticket={self.TSRDLTicket}",
-            cookies=self.session.cookies,
-        )
-        responseJSON = response.json()
+        elapsed = time.time() - self.ticketInitializedTime
+        if elapsed < POLL_START_S:
+            time.sleep(POLL_START_S - elapsed)
 
-        if response.status_code == 200:
-            if responseJSON["error"] == "":
+        deadline = self.ticketInitializedTime + POLL_TIMEOUT_S
+        last_error = "Invalid download ticket"
+        while time.time() < deadline:
+            response = http_client.get(
+                f"{BASE}/ajax.php?c=downloads&a=getdownloadurl&ajax=1"
+                f"&itemid={self.url.itemId}&mid=0&lk=0&ticket={self.TSRDLTicket}",
+                sess=self.session,
+                retries=1,
+            )
+            response.raise_for_status()
+            responseJSON = response.json()
+            err = responseJSON.get("error")
+            if err == "" and responseJSON.get("url"):
                 return responseJSON["url"]
-            elif responseJSON["error"] == "Invalid download ticket":
-                raise InvalidDownloadTicket(response.url, self.session.cookies)
-        else:
-            raise requests.exceptions.HTTPError(response)
+            last_error = err or "Unknown download error"
+            if err and err != "Invalid download ticket":
+                raise RuntimeError(last_error)
+            time.sleep(POLL_INTERVAL_S + random.uniform(0, POLL_JITTER_S))
 
-    @classmethod
-    def __getTSRDLTicketCookie(self) -> str:
-        logger.info(f"Getting 'tsrdlticket' cookie for: {self.url.url}")
-        url = f"{self.url.downloadUrl}/ticket/{self.TSRDLTicket}"
-        response = self.session.get(url)
-        set_cookie = response.headers.get("Set-Cookie")
-        return set_cookie.split(";")[0].split("=")[1] if set_cookie else ""
-    
-    @classmethod
-    def __getTSRDLTicket(self) -> str:
-        logger.info(f"Getting 'tsrdlticket' for: {self.url.url}")
-        response = self.session.get(
-            f"https://www.thesimsresource.com/ajax.php?c=downloads&a=initDownload&itemid={self.url.itemId}&format=zip"
+        if last_error == "Invalid download ticket":
+            raise InvalidDownloadTicket(
+                f"{BASE}/ajax.php?c=downloads&a=getdownloadurl",
+                self.session.cookies,
+            )
+        raise RuntimeError(last_error)
+
+    def __visitTicketPage(self, ticket_path: str | None) -> None:
+        path = ticket_path or f"/downloads/download/itemId/{self.url.itemId}/ticket/{self.TSRDLTicket}"
+        if not path.startswith("http"):
+            path = BASE + path
+        logger.info(f"Opening ticket page for: {self.url.url}")
+        response = http_client.get(path, sess=self.session)
+        response.raise_for_status()
+        new_sid = self.session.cookies.get("tsrdlsession")
+        if new_sid:
+            self.sessionId = new_sid
+            logger.debug(f"Session cookie after ticket page: {new_sid}")
+
+    def __getTSRDLTicket(self) -> tuple[str, str | None]:
+        logger.info(f"Getting download ticket for: {self.url.url}")
+        response = http_client.get(
+            f"{BASE}/ajax.php?c=downloads&a=initDownload"
+            f"&itemid={self.url.itemId}&format=zip",
+            sess=self.session,
         )
-        return response.json()['ticket']
+        response.raise_for_status()
+        data = response.json()
+        ticket = data.get("ticket")
+        if not ticket:
+            raise RuntimeError(f"initDownload missing ticket: {data}")
+        return ticket, data.get("url")

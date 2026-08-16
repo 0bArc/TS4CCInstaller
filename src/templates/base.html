@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}CC Installer - TSR Community Manager{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='STCM.ico') }}" type="image/x-icon" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}" />
+</head>
+<body class="has-window-chrome">
+  <header class="window-chrome" aria-label="Window">
+    <div class="window-chrome-drag pywebview-drag-region" id="window-drag">
+      <span class="window-chrome-title">CC Installer - TSR Community Manager</span>
+    </div>
+    <div class="window-chrome-controls">
+      <button type="button" class="win-btn" id="win-minimize" title="Minimize" aria-label="Minimize">
+        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 5h8" /></svg>
+      </button>
+      <button type="button" class="win-btn" id="win-maximize" title="Maximize" aria-label="Maximize">
+        <svg class="win-icon-max" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 1.5h7v7h-7z" /></svg>
+        <svg class="win-icon-restore" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 3.5h5v5h-5zM3.5 1.5h5v5" /></svg>
+      </button>
+      <button type="button" class="win-btn win-close" id="win-close" title="Close" aria-label="Close">
+        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7" /></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="toast-host" id="toasts"></div>
+
+  <div class="sidebar-backdrop" id="sidebar-backdrop" hidden></div>
+  <aside class="sidebar" id="sidebar" aria-hidden="true">
+    <div class="sidebar-head">
+      <strong>Menu</strong>
+      <button type="button" class="icon-btn" id="sidebar-close" aria-label="Close">✕</button>
+    </div>
+    <nav class="sidebar-nav">
+      <button type="button" class="sidebar-link" data-nav="browse">Browse</button>
+      <button type="button" class="sidebar-link" data-nav="library">Installed content</button>
+      <button type="button" class="sidebar-link" data-nav="settings">Settings</button>
+      <button type="button" class="sidebar-link" data-nav="help">Help</button>
+      <button type="button" class="sidebar-link" data-nav="legal">License &amp; legal</button>
+    </nav>
+    <div class="sidebar-foot">
+      <p class="sidebar-credits">
+        Based on Xientraa's The-Sims-Resource-Downloader<br />
+        MIT License
+      </p>
+    </div>
+  </aside>
+
+  <div class="panel-backdrop" id="settings-backdrop" hidden></div>
+  <section class="side-panel" id="settings-panel" aria-hidden="true">
+    <div class="side-panel-head">
+      <h2>Settings</h2>
+      <button type="button" class="icon-btn" id="settings-close" aria-label="Close">✕</button>
+    </div>
+    <div class="side-panel-body">
+      <label class="form-label" for="setting-download-dir">Install folder (Sims Mods)</label>
+      <div class="field-row">
+        <input id="setting-download-dir" class="field" type="text" placeholder="Choose a folder..." />
+        <button type="button" class="btn btn-ghost" id="setting-pick-folder">Browse</button>
+      </div>
+
+      <label class="form-label" for="setting-max-downloads">Max active downloads</label>
+      <input id="setting-max-downloads" class="field" type="number" min="1" max="16" value="4" />
+
+      <label class="check-row">
+        <input id="setting-save-queue" type="checkbox" />
+        <span>Save download queue</span>
+      </label>
+      <label class="check-row">
+        <input id="setting-debug" type="checkbox" />
+        <span>Debug logging</span>
+      </label>
+
+      <button type="button" class="btn btn-primary" id="setting-save" style="width:100%;margin-top:18px">Save settings</button>
+      <button type="button" class="btn btn-ghost" id="setting-clear-cache" style="width:100%;margin-top:10px">Clear cache</button>
+      <p class="hint" id="cache-status" style="margin-top:10px"></p>
+    </div>
+  </section>
+
+  <div class="panel-backdrop" id="legal-backdrop" hidden></div>
+  <section class="side-panel" id="legal-panel" aria-hidden="true">
+    <div class="side-panel-head">
+      <h2>License &amp; legal</h2>
+      <button type="button" class="icon-btn" id="legal-close" aria-label="Close">✕</button>
+    </div>
+    <div class="legal-body" id="legal-body">
+      <h3>Not affiliated</h3>
+      <p>
+        Unofficial community tool. Not affiliated with, endorsed by, or sponsored by
+        Electronic Arts, The Sims, or The Sims Resource (or their owners).
+      </p>
+      <p>
+        Use may conflict with third-party website terms of service. You are solely
+        responsible for how you use this software.
+      </p>
+      <p>
+        THE SOFTWARE IS PROVIDED "AS IS." Authors are not liable for account bans,
+        rate limits, lost downloads, corrupted mods, data loss, or other damages.
+      </p>
+      <p>Trademarks belong to their respective owners and are used only for identification.</p>
+      <h3>MIT License</h3>
+      <pre id="legal-mit">Loading...</pre>
+    </div>
+  </section>
+
+  <div class="panel-backdrop" id="basket-backdrop" hidden></div>
+  <section class="basket-panel" id="basket-panel" aria-hidden="true">
+    <div class="basket-panel-head">
+      <h2>Download basket</h2>
+      <button type="button" class="icon-btn" id="basket-close" aria-label="Close">✕</button>
+    </div>
+    <div class="basket-panel-body" id="basket-body">
+      <p class="hint" id="basket-empty">Basket is empty. Add items from browse.</p>
+      <div class="basket-grid" id="basket-grid" hidden></div>
+    </div>
+    <div class="basket-panel-foot">
+      <label class="check-row basket-select-all">
+        <input type="checkbox" id="basket-select-all" />
+        <span>Select all</span>
+      </label>
+      <div class="basket-foot-actions">
+        <button type="button" class="btn btn-ghost" id="basket-remove-selected">Remove selected</button>
+        <button type="button" class="btn btn-ghost" id="basket-remove-all">Remove all</button>
+        <button type="button" class="btn btn-primary" id="basket-download-all">Download all</button>
+      </div>
+      <p class="basket-total hint" id="basket-total">Total size: -</p>
+    </div>
+  </section>
+
+  <div class="onboard" id="onboard" hidden>
+    <div class="onboard-card">
+      <p class="onboard-step" id="onboard-step-label">Step 1 of 3</p>
+      <h2 id="onboard-title">Welcome</h2>
+      <p class="onboard-text" id="onboard-text"></p>
+      <div id="onboard-extra"></div>
+      <div class="onboard-actions">
+        <button type="button" class="btn btn-ghost" id="onboard-back" hidden>Back</button>
+        <button type="button" class="btn btn-primary" id="onboard-next">Next</button>
+      </div>
+    </div>
+  </div>
+
+  {% block body %}{% endblock %}
+
+  <dialog id="captcha-modal" class="modal-backdrop">
+    <div class="modal-card">
+      <h3 style="margin:0">TSR captcha</h3>
+      <p class="hint" style="margin:8px 0 0">Enter the code so downloads work.</p>
+      <img id="captcha-img" src="" alt="captcha" />
+      <input id="captcha-code" class="field" style="width:100%;border-radius:10px" type="text" placeholder="Captcha code" autocomplete="off" />
+      <div class="modal-actions">
+        <form method="dialog"><button class="btn btn-ghost">Cancel</button></form>
+        <button type="button" class="btn btn-primary" id="captcha-submit">Submit</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

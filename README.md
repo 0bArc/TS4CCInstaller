@@ -1,29 +1,65 @@
-# The Sims Resource Downloader
+# CC Installer - TSR Community Manager
 
-[![Code Style: Black](https://img.shields.io/badge/Code_Style-Black-black.svg?style=for-the-badge)](https://github.com/psf/black) [![License: MIT](https://img.shields.io/github/license/Xientraa/The-Sims-Resource-Downloader?label=License&style=for-the-badge)](./LICENSE)
+[![Code Style: Black](https://img.shields.io/badge/Code_Style-Black-black.svg?style=for-the-badge)](https://github.com/psf/black) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](./LICENSE)
 
-I created this tool because I found it infuriating to download stuff from The Sims Resource, their 15 second wait along with only being able to download a single item at a time and them plastering advertisements everywhere for their VIP service.
 
-With this tool you can download multiple items at once, to download items copy the url of the item, the tool monitors your clipboard for valid URLs to download from, and will automatically start downloading the item to the supplied directory in the `config.json` file.
+![Manager Icon](src/static/STCM-6.png)
 
-For a fully in-depth guide of how to setup and use this tool, check out the [Wiki](https://github.com/Xientraa/The-Sims-Resource-Downloader/wiki).
+
+I made this because downloading from The Sims Resource is a pain: 15 second waits, one file at a time, and VIP ads everywhere.
+
+The default app is a desktop window (Flask + pywebview). It browses free Sims 4 content, skips VIP / early access, and installs packages into your Mods folder. First run asks where to install. The old clipboard CLI is still there with `--cli`.
+However, for a better experience, I recommend using the app.
+
+## Preview
+
+<p align="center">
+  <a href="src/static/preview/slide1.jpg"><img src="src/static/preview/slide1.jpg" alt="Browse" width="260" /></a>
+  <a href="src/static/preview/slide2.png"><img src="src/static/preview/slide2.png" alt="Item details" width="260" /></a>
+  <a href="src/static/preview/slide3.png"><img src="src/static/preview/slide3.png" alt="Download basket" width="260" /></a>
+</p>
+
+<p align="center">
+  <em>Browse, item details, download basket</em> (click a thumbnail for full size)
+</p>
+
+## Signature
+I don't have enough interest to be able to sign the executable.
+Follow the instructions below to install if you don't want the executable.
+
+## Attribution
+
+This project is a heavily modified fork of [The-Sims-Resource-Downloader](https://github.com/Xientraa/The-Sims-Resource-Downloader) by Xientraa (MIT License).
+Upstream copyright: Copyright (c) 2023 Xientraa. Modifications: Copyright (c) 2026 0bArc.
+See [LICENSE](./LICENSE) for the full MIT terms.
 
 ## Configuration
 
+Preferences and app data are stored in:
+
+`%APPDATA%\CCInstaller`
+
+On most PCs that is:
+
+`C:\Users\<you>\AppData\Roaming\CCInstaller`
+
+If you already used an older build, data may still live in `%APPDATA%\TSRCommunityModManager` (that folder is reused automatically).
+
+Files there include `config.json`, session, library, cache, and logs. Package installs still go to the Mods folder you choose in setup - not AppData.
+
 | Option | Description | type |
 | - | - | - |
-| downloadDirectory | Path to a directory where the files will be downloaded to. | string |
-| maxActiveDownloads | Limits the amount of concurrent downloads. | integer |
-| saveDownloadQueue | Toggles saving & loading of active downloads & queued downloads. | boolean |
-| debug | Toggles debug messages from the logger. | boolean |
+| downloadDirectory | Folder where packages are installed (any folder under Sims 4 Mods). | string |
+| maxActiveDownloads | Max concurrent downloads. | integer |
+| saveDownloadQueue | Save and reload the download queue. | boolean |
+| debug | Extra logger output. | boolean |
+| setupComplete | Set after first-run setup. | boolean |
 
-## Setting Up Environment
+## Setup
 
 ```sh
 python -m venv ./env/
 ```
-
-## Installing Requirements
 
 ```pip
 pip install -r requirements.txt
@@ -34,3 +70,49 @@ pip install -r requirements.txt
 ```sh
 python src/main.py
 ```
+
+Opens the desktop app.
+
+Clipboard CLI:
+
+```sh
+python src/main.py --cli
+```
+
+## App features
+
+- Browse by category and search
+- Free items only
+- Item detail page with image gallery
+- Download + unpack into your chosen Mods folder
+- Installed content list with uninstall
+- Download basket (add items, then Download all)
+- Session / captcha for downloads
+- Local cache with per-type TTLs (browse / items / images); manual clear in Settings
+
+Needs `Flask` and `pywebview` from `requirements.txt`. On Windows it uses WebView2.
+
+## Windows .exe build
+
+```sh
+build_exe.bat
+```
+
+Or:
+
+```sh
+pip install -r requirements.txt pyinstaller
+pyinstaller --noconfirm --clean CCInstaller.spec
+```
+
+Output: `dist/CCInstaller.exe` (single file, double-click to run). Needs Edge WebView2 (already on most Win10/11). First launch unpacks briefly. Preferences write to `%APPDATA%\CCInstaller` (see Configuration). If it fails, check `crash.log` in that folder.
+
+## Legal
+
+This is an unofficial community tool. It is not affiliated with, endorsed by, or sponsored by Electronic Arts, The Sims, or The Sims Resource (or their owners).
+
+Use may conflict with third-party website terms of service. You are solely responsible for how you use this software, including compliance with those terms and applicable law.
+
+THE SOFTWARE IS PROVIDED "AS IS." Authors are not liable for account bans, rate limits, lost downloads, corrupted mods, data loss, or any other damages arising from use. MIT license terms in [LICENSE](./LICENSE) also apply.
+
+Trademarks mentioned belong to their respective owners and are used only for identification.

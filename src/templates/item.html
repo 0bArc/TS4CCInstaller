@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Item - CC Installer - TSR Community Manager{% endblock %}
+{% block body %}
+<div class="app-shell">
+  <header class="topbar">
+    <a class="icon-btn" href="/" title="Back">←</a>
+    <div class="topbar-title" id="item-title">Item</div>
+    <div class="topbar-end">
+      {% include "_basket_pill.html" %}
+      <button type="button" class="icon-btn" id="btn-menu" title="Menu">☰</button>
+    </div>
+  </header>
+
+  <div class="page">
+    <div id="item-loading" class="center-msg"><div class="spinner"></div></div>
+    <div id="item-error" class="center-msg hidden" style="color:#ff8e8e"></div>
+
+    <div id="item-content" class="hidden">
+      <div class="detail-grid">
+        <div class="thumbs" id="thumbs"></div>
+        <div class="hero-shot">
+          <img id="gallery-img" src="" alt="" />
+        </div>
+        <div class="detail-panel">
+          <h1 id="detail-title"></h1>
+          <div class="price-line" id="detail-meta"></div>
+          <div class="accordion">
+            <details open>
+              <summary>Description</summary>
+              <div class="body" id="detail-desc"></div>
+            </details>
+            <details>
+              <summary>Notes</summary>
+              <div class="body" id="detail-notes"></div>
+            </details>
+          </div>
+          <div class="detail-actions">
+            <button type="button" class="btn btn-ghost" id="btn-add-basket" disabled>Add to basket</button>
+            <button type="button" class="btn btn-primary" id="btn-download" disabled>Download</button>
+          </div>
+          <p id="download-status" class="dl-status hint" style="margin-top:10px"></p>
+        </div>
+      </div>
+
+      <section class="suggest" id="suggest-section" hidden>
+        <div class="suggest-head">
+          <h2 id="suggest-heading">More like this</h2>
+          <a class="suggest-all" id="suggest-all" href="/">Browse category</a>
+        </div>
+        <div id="suggest-grid" class="product-grid suggest-grid"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<dialog id="manage-modal" class="modal-backdrop">
+  <div class="modal-card manage-card">
+    <h3 style="margin:0">Manage install</h3>
+    <p class="hint" id="manage-title" style="margin:8px 0 16px"></p>
+    <div class="manage-actions">
+      <button type="button" class="btn btn-ghost" id="manage-reveal">View in Explorer</button>
+      <button type="button" class="btn btn-uninstall" id="manage-uninstall">Uninstall</button>
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <form method="dialog"><button class="btn btn-ghost">Close</button></form>
+    </div>
+  </div>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    Shell.init();
+    ItemPage.init({{ item_id }});
+  });
+</script>
+{% endblock %}

@@ -1,14 +1,16 @@
-import logging, sys, traceback
+import logging, os, sys, traceback
 from typing import Type
 from types import TracebackType
-from config import CONFIG
+from config import CONFIG, CURRENT_DIR
 
+LOG_PATH = os.path.join(CURRENT_DIR, "logs.log")
 
 streamHandler = logging.StreamHandler(sys.stdout)
 streamHandler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 logging.basicConfig(
     format="[%(asctime)s] [%(levelname)s] %(message)s",
-    filename="logs.log",
+    filename=LOG_PATH,
+    filemode="w",
     level=logging.DEBUG if CONFIG.get("debug") == True else logging.INFO,
 )
 logger = logging.getLogger(__name__)

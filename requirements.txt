@@ -1,2 +1,5 @@
 clipboard==0.0.4
-requests==2.28.1
+requests>=2.28.1
+Flask>=3.0
+pywebview>=5.0
+pythonnet>=3.0.0; platform_system=="Windows"

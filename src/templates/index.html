@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}CC Installer - TSR Community Manager{% endblock %}
+{% block body %}
+<div class="app-shell">
+  <header class="topbar">
+    <button type="button" class="icon-btn" id="btn-menu" title="Menu">☰</button>
+    <div class="topbar-title">CC Installer - TSR Community Manager</div>
+    <span aria-hidden="true"></span>
+  </header>
+
+  <div class="page">
+    <div class="page-head">
+      <h1 id="page-heading">Trending Now</h1>
+      <div class="meta" id="creations-count"></div>
+    </div>
+
+    <div class="browse-bar">
+      <div class="browse-menu" id="browse-menu">
+        <input type="hidden" id="category" value="{{ default_category }}" />
+        <button type="button" class="browse-trigger" id="browse-trigger" aria-haspopup="true" aria-expanded="false">
+          <span id="browse-trigger-label">Clothing</span>
+          <span class="browse-caret" aria-hidden="true"></span>
+        </button>
+        <div class="browse-panel" id="browse-panel" hidden>
+          <div class="browse-tabs" role="tablist">
+            <button type="button" class="browse-tab active" data-tab="categories">Categories</button>
+            <button type="button" class="browse-tab" data-tab="creators">Creators</button>
+            <button type="button" class="browse-tab" data-tab="hidden">Hidden</button>
+          </div>
+          <div class="browse-pane" data-pane="categories">
+            <div class="cat-grid" id="cat-grid">
+              {% for label, path in categories %}
+              <button type="button" class="cat-link" data-path="{{ path }}" data-label="{{ label }}">{{ label }}</button>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="browse-pane" data-pane="creators" hidden>
+            <div class="creator-search" id="creator-search">
+              <input class="field" id="creator-query" type="search" placeholder="Creator name or slug..." autocomplete="off" />
+              <button type="button" class="btn btn-primary" id="creator-go">Go</button>
+            </div>
+            <p class="hint creator-section-label">Recent</p>
+            <div class="cat-grid" id="creator-recent"></div>
+          </div>
+          <div class="browse-pane" data-pane="hidden" hidden>
+            <p class="hint creator-section-label">Hidden</p>
+            <div class="cat-grid" id="creator-hidden"></div>
+          </div>
+        </div>
+      </div>
+
+      <form id="search-form" class="search-row">
+        <input id="query" class="field" type="search" placeholder="Search this category..." />
+        {% include "_basket_pill.html" %}
+        <button type="submit" class="btn btn-primary">Search</button>
+      </form>
+    </div>
+
+    <div class="browse-meta">
+      <div>
+        <p class="hint">Free items only</p>
+        <div id="status-line" class="status"></div>
+      </div>
+      <nav id="paginator-top" class="pager pager-top" aria-label="Pagination top"></nav>
+    </div>
+
+    <div id="loading" class="center-msg hidden"><div class="spinner"></div></div>
+    <div id="empty" class="center-msg hidden">No items on this page</div>
+    <div id="grid" class="product-grid"></div>
+    <nav id="paginator-bottom" class="pager" aria-label="Pagination bottom"></nav>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    Shell.init();
+    BrowseMenu.init();
+    BrowsePage.init();
+  });
+</script>
+{% endblock %}

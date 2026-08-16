@@ -1,6 +1,7 @@
 {
-    "downloadDirectory": "./",
+    "downloadDirectory": "C:\\Users\\sandk\\Documents\\Electronic Arts\\The Sims 4\\Mods\\clothes\\tcm",
     "maxActiveDownloads": 4,
     "saveDownloadQueue": true,
-    "debug": false
+    "debug": false,
+    "setupComplete": true
 }

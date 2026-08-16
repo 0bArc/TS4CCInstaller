@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Installed - CC Installer - TSR Community Manager{% endblock %}
+{% block body %}
+<div class="app-shell">
+  <header class="topbar">
+    <button type="button" class="icon-btn" id="btn-menu" title="Menu">☰</button>
+    <div class="topbar-title">CC Installer - TSR Community Manager</div>
+    {% include "_basket_pill.html" %}
+  </header>
+
+  <div class="page">
+    <div class="page-head">
+      <h1>Installed content</h1>
+      <div class="meta" id="library-count"></div>
+    </div>
+    <p class="hint">Content installed by this app. Uninstall deletes the tracked package files from your Mods folder.</p>
+
+    <div id="status-line" class="status"></div>
+    <div id="loading" class="center-msg hidden"><div class="spinner"></div></div>
+    <div id="empty" class="center-msg hidden">Nothing installed yet. Download something from Browse.</div>
+    <div id="grid" class="product-grid"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    Shell.init();
+    LibraryPage.init();
+  });
+</script>
+{% endblock %}

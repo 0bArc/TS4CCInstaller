@@ -1,62 +1,87 @@
 from __future__ import annotations
-from TSRUrl import TSRUrl
-from TSRDownload import TSRDownload
-from logger import logger
-from exceptions import *
-from multiprocessing import Pool
-from TSRSession import TSRSession
-from config import CONFIG, CURRENT_DIR
-import clipboard, time, os
+import sys
+from multiprocessing import freeze_support
 
 
-def processTarget(url: TSRUrl, tsrdlsession: str, downloadPath: str):
-    try:
-        downloader = TSRDownload(url, tsrdlsession)
-        downloader.init()
-        downloader.download(downloadPath)
-        logger.info(f"Completed download for: {url.url}")
-    except Exception as e:
-        logger.error(e)
+def run_cli():
+    """Legacy clipboard-monitoring downloader (deprecated).
 
-    return url
+    Kept for reference / power users behind the `--cli` flag.
+    """
+    from TSRUrl import TSRUrl
+    from TSRDownload import TSRDownload
+    from logger import logger
+    from exceptions import InvalidURL, InvalidCaptchaCode
+    from multiprocessing import Pool
+    from TSRSession import TSRSession
+    from config import CONFIG, CURRENT_DIR, resolve_download_dir, needs_onboarding
+    import clipboard, time, os
 
-
-def callback(url: TSRUrl):
-    logger.debug(f"Removing {url.itemId} from queue")
-    runningDownloads.remove(url.itemId)
-    updateUrlFile()
-    if len(runningDownloads) == 0:
-        logger.info("All downloads have been completed")
-
-
-def updateUrlFile():
-    logger.debug(f"Updating URL file")
-    if CONFIG["saveDownloadQueue"]:
-        open(CURRENT_DIR + "/urls.txt", "w").write(
-            "\n".join(
-                [
-                    DETAILS_URL + str(id)
-                    for id in [*runningDownloads, *downloadQueue, *vipItemIds]
-                ]
-            )
+    if needs_onboarding(CONFIG):
+        raise SystemExit(
+            "Setup incomplete. Run the app once without --cli to finish onboarding, "
+            "or set downloadDirectory + setupComplete in config.json."
         )
+    download_dir = resolve_download_dir(CONFIG)
 
+    def processTarget(url: TSRUrl, tsrdlsession: str, downloadPath: str):
+        try:
+            downloader = TSRDownload(url, tsrdlsession)
+            downloader.init()
+            refreshed = downloader.current_session_id()
+            if refreshed and refreshed != tsrdlsession:
+                tsrdlsession = refreshed
+                open(CURRENT_DIR + "/session", "w").write(tsrdlsession)
+            file_name = downloader.download(downloadPath)
+            from sims_install import install_into_library
+            import library_store
 
-if __name__ == "__main__":
+            files = install_into_library(downloadPath, file_name)
+            library_store.record_install(
+                item_id=url.itemId,
+                title=f"Item {url.itemId}",
+                files=files,
+                url=url.url,
+            )
+            logger.info(f"Completed download for: {url.url}")
+        except Exception as e:
+            logger.error(e)
+
+        return url
+
+    def callback(url: TSRUrl):
+        logger.debug(f"Removing {url.itemId} from queue")
+        runningDownloads.remove(url.itemId)
+        updateUrlFile()
+        if len(runningDownloads) == 0:
+            logger.info("All downloads have been completed")
+
+    def updateUrlFile():
+        logger.debug(f"Updating URL file")
+        if CONFIG["saveDownloadQueue"]:
+            open(CURRENT_DIR + "/urls.txt", "w").write(
+                "\n".join(
+                    [
+                        DETAILS_URL + str(id)
+                        for id in [*runningDownloads, *downloadQueue, *vipItemIds]
+                    ]
+                )
+            )
+
     DETAILS_URL = "https://www.thesimsresource.com/downloads/details/id/"
     lastPastedText = ""
     runningDownloads: list[int] = []
     downloadQueue: list[int] = []
     vipItemIds: list[int] = []
 
-    logger.debug(f'downloadDirectory: {CONFIG["downloadDirectory"]}')
+    logger.debug(f"downloadDirectory: {download_dir}")
     logger.debug(f'maxActiveDownloads: {CONFIG["maxActiveDownloads"]}')
     logger.debug(f'saveDownloadQueue: {CONFIG["saveDownloadQueue"]}')
     logger.debug(f'debug: {CONFIG["debug"]}')
 
-    if not os.path.exists(CONFIG["downloadDirectory"]):
+    if not os.path.exists(download_dir):
         raise FileNotFoundError(
-            f"The directory: {CONFIG['downloadDirectory']} does not exist! Please make sure the directory exists or the directory is set correctly in the config."
+            f"The directory: {download_dir} does not exist! Please make sure the directory exists or the directory is set correctly in the config."
         )
 
     session = None
@@ -75,6 +100,9 @@ if __name__ == "__main__":
                 "Invalid captcha code entered, please make sure the code is correct"
             )
             sessionId = None
+        except Exception as e:
+            logger.error(f"Failed to create TSR session: {e}")
+            sys.exit(1)
 
     if os.path.exists(CURRENT_DIR + "/urls.txt") and CONFIG["saveDownloadQueue"]:
         for url in open(CURRENT_DIR + "/urls.txt", "r").read().split("\n"):
@@ -112,7 +140,7 @@ if __name__ == "__main__":
                     args=[
                         url,
                         session.tsrdlsession,
-                        CONFIG["downloadDirectory"],
+                        download_dir,
                     ],
                     callback=callback,
                 )
@@ -179,10 +207,35 @@ if __name__ == "__main__":
                             args=[
                                 url,
                                 session.tsrdlsession,
-                                CONFIG["downloadDirectory"],
+                                download_dir,
                             ],
                             callback=callback,
                         )
                 updateUrlFile()
 
         time.sleep(0.1)
+
+
+def _windows_app_id() -> None:
+    """Un-group from python.exe so the taskbar can show our icon."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            "CCInstaller.TSRCommunityManager.1"
+        )
+    except Exception:
+        pass
+
+
+if __name__ == "__main__":
+    freeze_support()
+    _windows_app_id()
+    if "--cli" in sys.argv:
+        run_cli()
+    else:
+        from webapp import main as web_main
+
+        web_main()

@@ -30,7 +30,8 @@ MANIFEST
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
-*.spec
+# Keep the checked-in lean build recipe
+!CCInstaller.spec
 
 # Installer logs
 pip-log.txt
@@ -170,3 +171,18 @@ poetry.toml
 src/urls.txt
 captcha.png
 session
+src/cache/
+src/logs.log
+src/library.json
+src/creators.json
+src/config.json
+src/captcha.png
+src/session
+src/gui_preview.png
+
+
+.vscode/
+.cursor/
+.cursor
+.vscode
+

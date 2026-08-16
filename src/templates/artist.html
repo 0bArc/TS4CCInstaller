@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Creator - CC Installer - TSR Community Manager{% endblock %}
+{% block body %}
+<div class="app-shell">
+  <header class="topbar">
+    <a class="icon-btn" href="/" title="Back">←</a>
+    <div class="topbar-title">CC Installer - TSR Community Manager</div>
+    <button type="button" class="icon-btn" id="btn-menu" title="Menu">☰</button>
+  </header>
+
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <h1 id="page-heading">Creator</h1>
+        <p class="hint" style="margin:6px 0 0">Sims 4 creations by this artist</p>
+      </div>
+      <div class="page-head-actions">
+        <div class="meta" id="creations-count"></div>
+        <button type="button" class="btn btn-ghost" id="btn-hide-creator">Hide creator</button>
+      </div>
+    </div>
+
+    <form id="artist-search-form" class="search-row artist-search">
+      <input id="artist-query" class="field" type="search" placeholder="Search this creator..." />
+      {% include "_basket_pill.html" %}
+      <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+
+    <div class="browse-meta">
+      <div id="status-line" class="status"></div>
+      <nav id="paginator-top" class="pager pager-top" aria-label="Pagination top"></nav>
+    </div>
+
+    <div id="loading" class="center-msg hidden"><div class="spinner"></div></div>
+    <div id="empty" class="center-msg hidden">No items on this page</div>
+    <div id="grid" class="product-grid"></div>
+    <nav id="paginator-bottom" class="pager" aria-label="Pagination bottom"></nav>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    Shell.init();
+    ArtistPage.init({{ artist_slug|tojson }});
+  });
+</script>
+{% endblock %}
